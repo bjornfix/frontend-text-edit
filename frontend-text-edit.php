@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Frontend Text Edit
  * Description: Frontend inline text editing for supported WordPress block content, saved back to native Gutenberg markup.
- * Version: 0.1.0
+ * Version: 0.1.2
  * Author: basicus
  * Author URI: https://profiles.wordpress.org/basicus/
  * License: GPL-2.0-or-later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Frontend_Text_Edit {
-	const VERSION = '0.1.0';
+	const VERSION = '0.1.2';
 	const REST_NAMESPACE = 'frontend-text-edit/v1';
 
 	/**
@@ -76,16 +76,22 @@ final class Frontend_Text_Edit {
 			'frontend-text-edit',
 			'FrontendTextEdit',
 			array(
-				'postId'   => $post_id,
-				'endpoint' => esc_url_raw( rest_url( self::REST_NAMESPACE . '/text' ) ),
-				'nonce'    => wp_create_nonce( 'wp_rest' ),
-				'labels'   => array(
+				'postId'         => $post_id,
+				'endpoint'       => esc_url_raw( rest_url( self::REST_NAMESPACE . '/text' ) ),
+				'reportEndpoint' => esc_url_raw( rest_url( self::REST_NAMESPACE . '/report' ) ),
+				'nonce'          => wp_create_nonce( 'wp_rest' ),
+				'labels'         => array(
 					'open'        => __( 'Frontend Text Edit', 'frontend-text-edit' ),
 					'close'       => __( 'Close', 'frontend-text-edit' ),
-					'active'      => __( 'Click text to edit it inline.', 'frontend-text-edit' ),
+					'active'      => __( 'Click editable text to edit it. Click other text to report missing support.', 'frontend-text-edit' ),
 					'inactive'    => __( 'Frontend Text Edit is off.', 'frontend-text-edit' ),
 					'save'        => __( 'Save', 'frontend-text-edit' ),
 					'cancel'      => __( 'Cancel', 'frontend-text-edit' ),
+					'report'      => __( 'Send report', 'frontend-text-edit' ),
+					'reportHint'  => __( 'This text is not editable yet.', 'frontend-text-edit' ),
+					'reportSaved' => __( 'Report sent.', 'frontend-text-edit' ),
+					'reportError' => __( 'Could not send this report.', 'frontend-text-edit' ),
+					'reportEmpty' => __( 'No readable text found to report.', 'frontend-text-edit' ),
 					'saved'       => __( 'Saved.', 'frontend-text-edit' ),
 					'error'       => __( 'Could not save this text change.', 'frontend-text-edit' ),
 					'unchanged'   => __( 'No text change to save.', 'frontend-text-edit' ),
@@ -213,6 +219,38 @@ final class Frontend_Text_Edit {
 				),
 			)
 		);
+
+		register_rest_route(
+			self::REST_NAMESPACE,
+			'/report',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( __CLASS__, 'rest_report_missing_text' ),
+				'permission_callback' => array( __CLASS__, 'rest_permission' ),
+				'args'                => array(
+					'post_id'  => array(
+						'required'          => true,
+						'type'              => 'integer',
+						'sanitize_callback' => 'absint',
+					),
+					'text'     => array(
+						'required'          => true,
+						'type'              => 'string',
+						'sanitize_callback' => array( __CLASS__, 'sanitize_report_text' ),
+					),
+					'selector' => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'url'      => array(
+						'required'          => false,
+						'type'              => 'string',
+						'sanitize_callback' => 'esc_url_raw',
+					),
+				),
+			)
+		);
 	}
 
 	/**
@@ -319,6 +357,56 @@ final class Frontend_Text_Edit {
 	}
 
 	/**
+	 * Email a report for visible text that is not editable yet.
+	 */
+	public static function rest_report_missing_text( WP_REST_Request $request ): WP_REST_Response {
+		$post_id = absint( $request->get_param( 'post_id' ) );
+		$text    = self::sanitize_report_text( $request->get_param( 'text' ) );
+		if ( '' === $text ) {
+			return rest_ensure_response( self::error( 'No readable text found to report.' ) );
+		}
+
+		$url = esc_url_raw( (string) $request->get_param( 'url' ) );
+		if ( ! self::report_url_publicly_available( $url ) ) {
+			return rest_ensure_response( self::error( 'Reports can only be sent for publicly available pages.' ) );
+		}
+
+		$recipients = self::report_recipients( $post_id );
+		if ( empty( $recipients ) ) {
+			return rest_ensure_response( self::error( 'Could not send this report.' ) );
+		}
+
+		$report = array(
+			'post_id'  => $post_id,
+			'title'    => get_the_title( $post_id ),
+			'url'      => $url,
+			'text'     => self::brief_excerpt( $text, 500 ),
+			'selector' => self::sanitize_report_selector( (string) $request->get_param( 'selector' ) ),
+			'user'     => self::current_user_label(),
+			'site'     => home_url( '/' ),
+		);
+
+		$subject = sprintf(
+			/* translators: %s: site host. */
+			__( '[Frontend Text Edit] Missing editable text on %s', 'frontend-text-edit' ),
+			wp_parse_url( home_url(), PHP_URL_HOST ) ?: home_url()
+		);
+		$sent    = wp_mail( $recipients, $subject, self::report_email_message( $report ) );
+		if ( ! $sent ) {
+			return rest_ensure_response( self::error( 'Could not send this report.' ) );
+		}
+
+		do_action( 'frontend_text_edit_missing_text_reported', $post_id, $report, $recipients );
+
+		return rest_ensure_response(
+			array(
+				'success' => true,
+				'post_id' => $post_id,
+			)
+		);
+	}
+
+	/**
 	 * Sanitize edited text as plain visible copy.
 	 */
 	public static function sanitize_text( $text ): string {
@@ -329,6 +417,134 @@ final class Frontend_Text_Edit {
 		$text = preg_replace( '/\R+/u', "\n", (string) $text );
 
 		return trim( (string) $text );
+	}
+
+	/**
+	 * Sanitize reported visible text.
+	 */
+	public static function sanitize_report_text( $text ): string {
+		return self::brief_excerpt( self::sanitize_text( $text ), 500 );
+	}
+
+	/**
+	 * Keep a short browser-side selector hint for adapter work.
+	 */
+	private static function sanitize_report_selector( string $selector ): string {
+		return self::brief_excerpt( sanitize_text_field( wp_unslash( $selector ) ), 240 );
+	}
+
+	/**
+	 * Verify that a reported page URL is publicly reachable enough to be useful.
+	 */
+	private static function report_url_publicly_available( string $url ): bool {
+		if ( '' === $url || ! wp_http_validate_url( $url ) ) {
+			return false;
+		}
+
+		$parts = wp_parse_url( $url );
+		$host  = is_array( $parts ) ? (string) ( $parts['host'] ?? '' ) : '';
+		if ( '' === $host || ! self::host_looks_public( $host ) ) {
+			return false;
+		}
+
+		$response = wp_safe_remote_get(
+			$url,
+			array(
+				'timeout'     => 8,
+				'redirection' => 3,
+				'user-agent'  => 'Frontend Text Edit/' . self::VERSION . '; ' . home_url( '/' ),
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			return false;
+		}
+
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		return $status >= 200 && $status < 400;
+	}
+
+	/**
+	 * Reject local, private, and reserved hosts for report emails.
+	 */
+	private static function host_looks_public( string $host ): bool {
+		$host = trim( strtolower( $host ), " \t\n\r\0\x0B[]" );
+		if ( '' === $host || 'localhost' === $host || str_ends_with( $host, '.local' ) || str_ends_with( $host, '.test' ) || str_ends_with( $host, '.localhost' ) ) {
+			return false;
+		}
+
+		$records = filter_var( $host, FILTER_VALIDATE_IP ) ? array( $host ) : gethostbynamel( $host );
+		if ( empty( $records ) || ! is_array( $records ) ) {
+			return false;
+		}
+
+		foreach ( $records as $ip ) {
+			if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Report recipients for missing-editable-text reports.
+	 *
+	 * @return array<int,string>
+	 */
+	private static function report_recipients( int $post_id ): array {
+		/**
+		 * Filters email recipients for missing-editable-text reports.
+		 *
+		 * Return an email address or array of email addresses. Return an empty value to disable reports.
+		 *
+		 * @param string|array<int,string> $recipients Default recipient.
+		 * @param int                      $post_id    Current post ID.
+		 */
+		$recipients = apply_filters( 'frontend_text_edit_report_recipients', array( 'support@devenia.com' ), $post_id );
+		$recipients = is_array( $recipients ) ? $recipients : array( $recipients );
+
+		return array_values(
+			array_filter(
+				array_map( 'sanitize_email', $recipients ),
+				'is_email'
+			)
+		);
+	}
+
+	/**
+	 * Build a plain-text support email.
+	 *
+	 * @param array<string,mixed> $report Report data.
+	 */
+	private static function report_email_message( array $report ): string {
+		$lines = array(
+			'Frontend Text Edit missing editable text report',
+			'Use this as a reproducibility signal for future plugin improvements. No reply is expected.',
+			'',
+			'Site: ' . (string) ( $report['site'] ?? '' ),
+			'URL: ' . (string) ( $report['url'] ?? '' ),
+			'Post ID: ' . (string) ( $report['post_id'] ?? '' ),
+			'Title: ' . (string) ( $report['title'] ?? '' ),
+			'User: ' . (string) ( $report['user'] ?? '' ),
+			'Selector: ' . (string) ( $report['selector'] ?? '' ),
+			'',
+			'Text:',
+			(string) ( $report['text'] ?? '' ),
+		);
+
+		return implode( "\n", $lines );
+	}
+
+	/**
+	 * Human-readable current user label for reports.
+	 */
+	private static function current_user_label(): string {
+		$user = wp_get_current_user();
+		if ( ! $user || ! $user->exists() ) {
+			return '';
+		}
+
+		return sprintf( '%s <%s> (#%d)', $user->display_name, $user->user_email, $user->ID );
 	}
 
 	/**
@@ -473,20 +689,20 @@ final class Frontend_Text_Edit {
 			if ( '' === $text ) {
 				continue;
 			}
-			$items[] = array(
-				'path'       => implode( '.', $path ) . ':segment:' . (int) $index,
-				'blockName'  => $block_name,
-				'label'      => self::segment_label( (string) ( $segment['type'] ?? '' ) ),
+				$items[] = array(
+					'path'       => implode( '.', $path ) . ':segment:' . (int) $index,
+					'blockName'  => $block_name,
+					'label'      => self::segment_label( (string) ( $segment['type'] ?? '' ) ),
 				'text'       => $text,
 				'hash'       => self::hash( $block_name, $html, (int) $index ),
 				'preview'    => self::brief_excerpt( $text, 140 ),
 				'html'       => $html,
 				'segment'    => array(
 					'index' => (int) $index,
-					'type'  => (string) ( $segment['type'] ?? '' ),
-				),
-			);
-		}
+						'type'  => (string) ( $segment['type'] ?? '' ),
+					),
+				);
+			}
 
 		return $items;
 	}
@@ -1292,9 +1508,10 @@ final class Frontend_Text_Edit {
 					},
 					trim( $html ),
 					1
-				);
-			}
+			);
 		}
+
+			}
 
 		if ( ! in_array( $block_name, self::segment_block_names(), true ) ) {
 			return '';

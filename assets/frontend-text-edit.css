@@ -24,6 +24,11 @@ body.frontend-text-edit-active [data-frontend-text-edit-path].frontend-text-edit
 	opacity: 0.68;
 }
 
+body.frontend-text-edit-active .frontend-text-edit-reporting {
+	outline: 1px solid rgba(181, 71, 8, 0.95);
+	outline-offset: 4px;
+}
+
 body.frontend-text-edit-active [data-frontend-text-edit-path][contenteditable="plaintext-only"]:focus {
 	background: #ffffff;
 	color: #101828;
@@ -32,7 +37,8 @@ body.frontend-text-edit-active [data-frontend-text-edit-path][contenteditable="p
 	-webkit-text-fill-color: currentColor;
 }
 
-.frontend-text-edit-toolbar {
+.frontend-text-edit-toolbar,
+.frontend-text-edit-report {
 	position: absolute;
 	z-index: 99999;
 	display: flex;
@@ -47,11 +53,23 @@ body.frontend-text-edit-active [data-frontend-text-edit-path][contenteditable="p
 }
 
 .frontend-text-edit-toolbar[hidden],
+.frontend-text-edit-report[hidden],
 .frontend-text-edit-status[hidden] {
 	display: none;
 }
 
-.frontend-text-edit-toolbar button {
+.frontend-text-edit-report {
+	align-items: center;
+	max-width: min(420px, calc(100vw - 24px));
+}
+
+.frontend-text-edit-report__hint {
+	max-width: 190px;
+	font-weight: 600;
+}
+
+.frontend-text-edit-toolbar button,
+.frontend-text-edit-report button {
 	min-height: 32px;
 	border: 1px solid #b9c2cf;
 	border-radius: 6px;
@@ -68,7 +86,14 @@ body.frontend-text-edit-active [data-frontend-text-edit-path][contenteditable="p
 	color: #ffffff !important;
 }
 
-.frontend-text-edit-toolbar button:focus-visible {
+.frontend-text-edit-report__send {
+	border-color: #b54708 !important;
+	background: #b54708 !important;
+	color: #ffffff !important;
+}
+
+.frontend-text-edit-toolbar button:focus-visible,
+.frontend-text-edit-report button:focus-visible {
 	outline: 2px solid #155eef;
 	outline-offset: 2px;
 }
@@ -113,9 +138,11 @@ html[dir="rtl"] .frontend-text-edit-status {
 		background: rgba(181, 71, 8, 0.22);
 	}
 
-	.frontend-text-edit-toolbar,
-	.frontend-text-edit-toolbar button,
-	.frontend-text-edit-status {
+		.frontend-text-edit-toolbar,
+		.frontend-text-edit-toolbar button,
+		.frontend-text-edit-report,
+		.frontend-text-edit-report button,
+		.frontend-text-edit-status {
 		border-color: #4a5568;
 		background: #1d2430;
 		color: #f7fafc;
@@ -151,6 +178,8 @@ html.devenia-dark-mode body.frontend-text-edit-active [data-frontend-text-edit-p
 
 html.devenia-dark-mode .frontend-text-edit-toolbar,
 html.devenia-dark-mode .frontend-text-edit-toolbar button,
+html.devenia-dark-mode .frontend-text-edit-report,
+html.devenia-dark-mode .frontend-text-edit-report button,
 html.devenia-dark-mode .frontend-text-edit-status {
 	border-color: #4a5568;
 	background: #111827;
@@ -161,6 +190,12 @@ html.devenia-dark-mode .frontend-text-edit-status {
 html.devenia-dark-mode .frontend-text-edit-toolbar__save {
 	border-color: #8fc6ff !important;
 	background: #2563eb !important;
+	color: #ffffff !important;
+}
+
+html.devenia-dark-mode .frontend-text-edit-report__send {
+	border-color: #f79009 !important;
+	background: #b54708 !important;
 	color: #ffffff !important;
 }
 

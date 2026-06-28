@@ -11,6 +11,8 @@
 	let active = false;
 	let toolbar;
 	let statusNode;
+	let reportPrompt;
+	let reportTarget;
 	let currentElement;
 
 	function label(name, fallback) {
@@ -34,6 +36,23 @@
 				path: element.dataset.frontendTextEditPath,
 				hash: element.dataset.frontendTextEditHash,
 				text: nextText
+			})
+		}).then((response) => response.json());
+	}
+
+	function requestReport(element) {
+		return fetch(config.reportEndpoint, {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-WP-Nonce': config.nonce
+			},
+			body: JSON.stringify({
+				post_id: config.postId,
+				text: editableText(element),
+				selector: selectorFor(element),
+				url: window.location.href
 			})
 		}).then((response) => response.json());
 	}
@@ -66,6 +85,7 @@
 
 	function disable() {
 		hideToolbar();
+		hideReportPrompt();
 		elements().forEach((element) => {
 			if (element.dataset.frontendTextEditOriginal && element.classList.contains('frontend-text-edit-dirty')) {
 				element.textContent = element.dataset.frontendTextEditOriginal;
@@ -143,7 +163,29 @@
 			if (currentElement) {
 				cancelEdit(currentElement);
 			}
+			});
+	}
+
+	function ensureReportPrompt() {
+		if (reportPrompt) {
+			return;
+		}
+
+		reportPrompt = document.createElement('div');
+		reportPrompt.className = 'frontend-text-edit-report';
+		reportPrompt.hidden = true;
+		reportPrompt.innerHTML = `
+			<div class="frontend-text-edit-report__hint">${escapeHtml(label('reportHint', 'This text is not editable yet.'))}</div>
+			<button type="button" class="frontend-text-edit-report__send">${escapeHtml(label('report', 'Send report'))}</button>
+			<button type="button" class="frontend-text-edit-report__cancel">${escapeHtml(label('cancel', 'Cancel'))}</button>
+		`;
+		document.body.appendChild(reportPrompt);
+		reportPrompt.querySelector('.frontend-text-edit-report__send').addEventListener('click', () => {
+			if (reportTarget) {
+				sendReport(reportTarget);
+			}
 		});
+		reportPrompt.querySelector('.frontend-text-edit-report__cancel').addEventListener('click', hideReportPrompt);
 	}
 
 	function positionToolbar(element) {
@@ -164,6 +206,27 @@
 		if (toolbar) {
 			toolbar.hidden = true;
 		}
+	}
+
+	function showReportPrompt(element) {
+		ensureReportPrompt();
+		reportTarget = element;
+		const rect = element.getBoundingClientRect();
+		reportPrompt.hidden = false;
+		const top = Math.max(42, rect.top + window.scrollY - reportPrompt.offsetHeight - 8);
+		const left = Math.min(
+			window.scrollX + document.documentElement.clientWidth - reportPrompt.offsetWidth - 12,
+			Math.max(window.scrollX + 12, rect.left + window.scrollX)
+		);
+		reportPrompt.style.top = `${top}px`;
+		reportPrompt.style.left = `${left}px`;
+	}
+
+	function hideReportPrompt() {
+		if (reportPrompt) {
+			reportPrompt.hidden = true;
+		}
+		reportTarget = null;
 	}
 
 	function cancelEdit(element) {
@@ -203,6 +266,29 @@
 		});
 	}
 
+	function sendReport(element) {
+		const text = editableText(element);
+		if (!text) {
+			showStatus(label('reportEmpty', 'No readable text found to report.'), 'error');
+			hideReportPrompt();
+			return;
+		}
+
+		element.classList.add('frontend-text-edit-reporting');
+		requestReport(element).then((data) => {
+			element.classList.remove('frontend-text-edit-reporting');
+			if (!data || !data.success) {
+				showStatus((data && data.message) || label('reportError', 'Could not send this report.'), 'error');
+				return;
+			}
+			hideReportPrompt();
+			showStatus(label('reportSaved', 'Report sent.'), 'success');
+		}).catch(() => {
+			element.classList.remove('frontend-text-edit-reporting');
+			showStatus(label('reportError', 'Could not send this report.'), 'error');
+		});
+	}
+
 	function showStatus(message, mode) {
 		ensureToolbar();
 		statusNode.textContent = message || '';
@@ -226,6 +312,51 @@
 		}[char]));
 	}
 
+	function reportableElement(target) {
+		if (!target || !target.closest) {
+			return null;
+		}
+		if (target.closest('#wpadminbar, .frontend-text-edit-toolbar, .frontend-text-edit-report, [data-frontend-text-edit-path], input, textarea, select, button, iframe, video, audio, canvas, svg')) {
+			return null;
+		}
+
+		const element = target.closest('p,h1,h2,h3,h4,h5,h6,li,a,blockquote,figcaption,summary,dt,dd,td,th,label,span,div');
+		if (!element || !document.body.contains(element) || element.closest('[data-frontend-text-edit-path]')) {
+			return null;
+		}
+
+		return editableText(element) ? element : null;
+	}
+
+	function selectorFor(element) {
+		const parts = [];
+		let node = element;
+		while (node && node.nodeType === 1 && node !== document.body && parts.length < 5) {
+			let part = node.tagName.toLowerCase();
+			if (node.id && !node.id.match(/^frontend-text-edit/i)) {
+				part += `#${cssEscape(node.id)}`;
+				parts.unshift(part);
+				break;
+			}
+			const classes = Array.from(node.classList || [])
+				.filter((name) => !name.match(/^frontend-text-edit/))
+				.slice(0, 2);
+			if (classes.length) {
+				part += `.${classes.map(cssEscape).join('.')}`;
+			}
+			parts.unshift(part);
+			node = node.parentElement;
+		}
+		return parts.join(' > ');
+	}
+
+	function cssEscape(value) {
+		if (window.CSS && typeof window.CSS.escape === 'function') {
+			return window.CSS.escape(value);
+		}
+		return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+	}
+
 	document.addEventListener('click', (event) => {
 		const target = event.target && event.target.closest ? event.target.closest('#wp-admin-bar-frontend-text-edit a') : null;
 		if (!target) {
@@ -235,15 +366,33 @@
 		toggle();
 	});
 
+	document.addEventListener('click', (event) => {
+		if (!active) {
+			return;
+		}
+		const element = reportableElement(event.target);
+		if (!element) {
+			return;
+		}
+		event.preventDefault();
+		showReportPrompt(element);
+	});
+
 	window.addEventListener('scroll', () => {
 		if (active && currentElement && toolbar && !toolbar.hidden) {
 			positionToolbar(currentElement);
+		}
+		if (active && reportTarget && reportPrompt && !reportPrompt.hidden) {
+			showReportPrompt(reportTarget);
 		}
 	}, { passive: true });
 
 	window.addEventListener('resize', () => {
 		if (active && currentElement && toolbar && !toolbar.hidden) {
 			positionToolbar(currentElement);
+		}
+		if (active && reportTarget && reportPrompt && !reportPrompt.hidden) {
+			showReportPrompt(reportTarget);
 		}
 	});
 }());
