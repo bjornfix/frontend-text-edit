@@ -40,6 +40,10 @@ Most WordPress frontend editing plugins focus on full post forms, frontend dashb
 
 ## Release Notes
 
+### 0.1.3
+
+- Removes the logged-in user identity from missing-editable-text report emails.
+
 ### 0.1.2
 
 - Adds missing-editable-text reports to help identify reproducible gaps in block support.

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Frontend Text Edit
  * Description: Frontend inline text editing for supported WordPress block content, saved back to native Gutenberg markup.
- * Version: 0.1.2
+ * Version: 0.1.3
  * Author: basicus
  * Author URI: https://profiles.wordpress.org/basicus/
  * License: GPL-2.0-or-later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Frontend_Text_Edit {
-	const VERSION = '0.1.2';
+	const VERSION = '0.1.3';
 	const REST_NAMESPACE = 'frontend-text-edit/v1';
 
 	/**
@@ -382,7 +382,6 @@ final class Frontend_Text_Edit {
 			'url'      => $url,
 			'text'     => self::brief_excerpt( $text, 500 ),
 			'selector' => self::sanitize_report_selector( (string) $request->get_param( 'selector' ) ),
-			'user'     => self::current_user_label(),
 			'site'     => home_url( '/' ),
 		);
 
@@ -525,7 +524,6 @@ final class Frontend_Text_Edit {
 			'URL: ' . (string) ( $report['url'] ?? '' ),
 			'Post ID: ' . (string) ( $report['post_id'] ?? '' ),
 			'Title: ' . (string) ( $report['title'] ?? '' ),
-			'User: ' . (string) ( $report['user'] ?? '' ),
 			'Selector: ' . (string) ( $report['selector'] ?? '' ),
 			'',
 			'Text:',
@@ -533,18 +531,6 @@ final class Frontend_Text_Edit {
 		);
 
 		return implode( "\n", $lines );
-	}
-
-	/**
-	 * Human-readable current user label for reports.
-	 */
-	private static function current_user_label(): string {
-		$user = wp_get_current_user();
-		if ( ! $user || ! $user->exists() ) {
-			return '';
-		}
-
-		return sprintf( '%s <%s> (#%d)', $user->display_name, $user->user_email, $user->ID );
 	}
 
 	/**
