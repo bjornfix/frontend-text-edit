@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Frontend Text Edit
  * Description: Frontend inline text editing for supported WordPress block content, saved back to native Gutenberg markup.
- * Version: 0.1.3
+ * Version: 0.1.4
  * Author: basicus
  * Author URI: https://profiles.wordpress.org/basicus/
  * License: GPL-2.0-or-later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Frontend_Text_Edit {
-	const VERSION = '0.1.3';
+	const VERSION = '0.1.4';
 	const REST_NAMESPACE = 'frontend-text-edit/v1';
 
 	/**
@@ -114,9 +114,14 @@ final class Frontend_Text_Edit {
 			return $content;
 		}
 
-		$items                 = self::items_for_content( (string) $post->post_content );
+		$items                 = self::items_for_post( $post );
 		$marked_segment_blocks = array();
 		foreach ( $items as $item ) {
+			if ( self::item_is_post_title( $item ) ) {
+				$content = self::mark_rendered_post_title( $content, $item );
+				continue;
+			}
+
 			$html = (string) ( $item['html'] ?? '' );
 			if ( '' === $html ) {
 				continue;
@@ -283,7 +288,7 @@ final class Frontend_Text_Edit {
 			array(
 				'success' => true,
 				'post_id' => $post_id,
-				'items'   => self::public_items( self::items_for_content( (string) $post->post_content ) ),
+				'items'   => self::public_items( self::items_for_post( $post ) ),
 			)
 		);
 	}
@@ -299,7 +304,18 @@ final class Frontend_Text_Edit {
 		}
 
 		$text      = self::sanitize_text( $request->get_param( 'text' ) );
-		$selection = self::parse_item_path( (string) $request->get_param( 'path' ) );
+		$raw_path  = (string) $request->get_param( 'path' );
+		if ( self::post_title_path() === $raw_path ) {
+			return rest_ensure_response(
+				self::update_post_title_item(
+					$post,
+					$text,
+					(string) $request->get_param( 'hash' )
+				)
+			);
+		}
+
+		$selection = self::parse_item_path( $raw_path );
 		if ( empty( $selection['path'] ) ) {
 			return rest_ensure_response( self::error( 'Invalid block path.' ) );
 		}
@@ -579,6 +595,53 @@ final class Frontend_Text_Edit {
 	}
 
 	/**
+	 * Find supported text items for a post, including virtual presentation fields.
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	private static function items_for_post( WP_Post $post ): array {
+		$items = self::items_for_content( (string) $post->post_content );
+		if ( self::content_uses_devenia_presentation_title( (string) $post->post_content ) ) {
+			array_unshift( $items, self::post_title_item( $post ) );
+		}
+
+		return $items;
+	}
+
+	/**
+	 * Whether stored content renders its visible hero title from post_title.
+	 */
+	private static function content_uses_devenia_presentation_title( string $content ): bool {
+		return 1 === preg_match( '/\[devenia_presentation\b[^\]]*\bfield=(["\'])text\.title\1[^\]]*\]/i', $content );
+	}
+
+	/**
+	 * Stable path for the virtual post title item.
+	 */
+	private static function post_title_path(): string {
+		return 'post:title';
+	}
+
+	/**
+	 * Build a virtual editable item for a shortcode-rendered post title.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private static function post_title_item( WP_Post $post ): array {
+		$title = self::plain_text( (string) get_the_title( $post ) );
+
+		return array(
+			'path'      => self::post_title_path(),
+			'blockName' => 'post/title',
+			'label'     => __( 'Title', 'frontend-text-edit' ),
+			'text'      => $title,
+			'hash'      => self::hash( 'post/title', $title ),
+			'preview'   => self::brief_excerpt( $title, 140 ),
+			'html'      => '',
+		);
+	}
+
+	/**
 	 * Strip internal matching markup from API responses.
 	 *
 	 * @param array<int,array<string,mixed>> $items Internal item rows.
@@ -780,6 +843,100 @@ final class Frontend_Text_Edit {
 			esc_attr( (string) ( $item['path'] ?? '' ) ),
 			esc_attr( (string) ( $item['hash'] ?? '' ) ),
 			esc_attr( (string) ( $item['label'] ?? '' ) )
+		);
+	}
+
+	/**
+	 * Whether an editable item targets the post title rather than block content.
+	 *
+	 * @param array<string,mixed> $item Editable item.
+	 */
+	private static function item_is_post_title( array $item ): bool {
+		return self::post_title_path() === (string) ( $item['path'] ?? '' );
+	}
+
+	/**
+	 * Mark the rendered H1 that is backed by post_title through a presentation shortcode.
+	 *
+	 * @param array<string,mixed> $item Editable item.
+	 */
+	private static function mark_rendered_post_title( string $content, array $item ): string {
+		$text = (string) ( $item['text'] ?? '' );
+		if ( '' === $text ) {
+			return $content;
+		}
+
+		$pattern = '/<h1\b(?![^>]*\bdata-frontend-text-edit-path=)[^>]*>.*?<\/h1>/is';
+		if ( ! preg_match_all( $pattern, $content, $matches, PREG_OFFSET_CAPTURE ) ) {
+			return $content;
+		}
+
+		foreach ( $matches[0] as $match ) {
+			$candidate = (string) $match[0];
+			if ( self::plain_text( $candidate ) !== $text ) {
+				continue;
+			}
+
+			$marked = (string) preg_replace( '/^<h1\b/i', '<h1' . self::marker_attributes( $item ), $candidate, 1 );
+			if ( '' !== $marked && $marked !== $candidate ) {
+				return substr_replace( $content, $marked, (int) $match[1], strlen( $candidate ) );
+			}
+		}
+
+		return $content;
+	}
+
+	/**
+	 * Save a frontend edit for a shortcode-rendered post title.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private static function update_post_title_item( WP_Post $post, string $text, string $hash ): array {
+		if ( ! self::content_uses_devenia_presentation_title( (string) $post->post_content ) ) {
+			return self::error( 'This title is not backed by a supported presentation field.' );
+		}
+
+		$current_title = self::plain_text( (string) get_the_title( $post ) );
+		if ( $hash !== self::hash( 'post/title', $current_title ) ) {
+			return self::error( 'The selected text changed before save. Reload the page and try again.' );
+		}
+		if ( '' === $text || $text === $current_title ) {
+			return self::error( 'No text change to save.' );
+		}
+
+		$result = wp_update_post(
+			wp_slash(
+				array(
+					'ID'         => (int) $post->ID,
+					'post_title' => $text,
+				)
+			),
+			true
+		);
+		if ( is_wp_error( $result ) ) {
+			return self::error( $result->get_error_message() );
+		}
+
+		clean_post_cache( (int) $post->ID );
+		$item = self::post_title_item( get_post( (int) $post->ID ) ?: $post );
+		do_action(
+			'frontend_text_edit_updated',
+			(int) $post->ID,
+			array(
+				'item'      => $item,
+				'text'      => $text,
+				'selection' => array(
+					'path'          => array(),
+					'segment_index' => null,
+					'virtual_path'  => self::post_title_path(),
+				),
+			)
+		);
+
+		return array(
+			'success' => true,
+			'post_id' => (int) $post->ID,
+			'item'    => self::public_items( array( $item ) )[0],
 		);
 	}
 
