@@ -8,7 +8,7 @@ Edit visible WordPress block text directly on the frontend and save changes back
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple.svg)](https://php.net)
 
 **Tested up to:** 7.0
-**Stable tag:** 0.1.4
+**Stable tag:** 0.1.5
 **License:** GPLv2 or later
 **License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,7 +73,7 @@ to:
 ## Current Support
 
 - Core paragraph, heading, list item, and button text.
-- Devenia presentation titles rendered from `post_title`.
+- Devenia presentation titles and excerpts rendered from WordPress post fields.
 - Text-node segments inside richer core block HTML.
 - Linked list-item text while preserving the existing link URL.
 - GenerateBlocks headline and button text.
@@ -118,13 +118,17 @@ If you are new to the plugin, use this order:
 - Uses the normal WordPress `edit_post` capability check
 - Saves edits through a nonce-protected REST endpoint
 - Writes changes back to `post_content`
-- Writes supported presentation hero title edits back to the WordPress post title
+- Writes supported presentation hero title and excerpt edits back to WordPress post fields
 - Keeps edited content as ordinary WordPress block markup
 - Reports unsupported visible text to `support@devenia.com` only for publicly reachable pages
 - Does not send logged-in user identity in those report emails
 - Does not edit layout, design settings, media, templates, or block structure
 
 ## Release Notes
+
+### 0.1.5
+
+- Adds frontend editing for Devenia presentation hero excerpts rendered from the WordPress post excerpt.
 
 ### 0.1.4
 

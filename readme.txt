@@ -4,7 +4,7 @@ Tags: frontend editing, inline editing, block editor, gutenberg, content editing
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.4
+Stable tag: 0.1.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -34,7 +34,7 @@ Most frontend editing plugins focus on full post forms, frontend dashboards, mod
 * REST save endpoint with normal `edit_post` capability checks.
 * Optimistic conflict hashes so stale edits are rejected.
 * Supported core paragraph, heading, list item, and button text.
-* Devenia presentation title editing when the visible hero title is rendered from `post_title`.
+* Devenia presentation title and excerpt editing when visible hero text is rendered from WordPress post fields.
 * Text-segment editing for richer block HTML.
 * GenerateBlocks headline/button matching.
 * Rank Math FAQ question and answer text editing.
@@ -43,7 +43,7 @@ Most frontend editing plugins focus on full post forms, frontend dashboards, mod
 == Current support ==
 
 * Core paragraph, heading, list item, and button text.
-* Devenia presentation titles rendered from `post_title`.
+* Devenia presentation titles and excerpts rendered from WordPress post fields.
 * Text-node segments inside richer core block HTML.
 * Linked list-item text while preserving the existing link URL.
 * GenerateBlocks headline and button text.
@@ -78,6 +78,9 @@ Yes. When frontend editing mode is on, clicking visible text that is not current
 Reports are sent only for publicly reachable HTTP/HTTPS pages. They are used to identify reproducible gaps for future plugin improvements, not as a support conversation.
 
 == Changelog ==
+
+= 0.1.5 =
+* Adds frontend editing for Devenia presentation hero excerpts rendered from the WordPress post excerpt.
 
 = 0.1.4 =
 * Adds frontend editing for Devenia presentation hero titles rendered from the WordPress post title.

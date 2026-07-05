@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Frontend Text Edit
  * Description: Frontend inline text editing for supported WordPress block content, saved back to native Gutenberg markup.
- * Version: 0.1.4
+ * Version: 0.1.5
  * Author: basicus
  * Author URI: https://profiles.wordpress.org/basicus/
  * License: GPL-2.0-or-later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Frontend_Text_Edit {
-	const VERSION = '0.1.4';
+	const VERSION = '0.1.5';
 	const REST_NAMESPACE = 'frontend-text-edit/v1';
 
 	/**
@@ -117,8 +117,8 @@ final class Frontend_Text_Edit {
 		$items                 = self::items_for_post( $post );
 		$marked_segment_blocks = array();
 		foreach ( $items as $item ) {
-			if ( self::item_is_post_title( $item ) ) {
-				$content = self::mark_rendered_post_title( $content, $item );
+			if ( self::item_is_post_field( $item ) ) {
+				$content = self::mark_rendered_post_field( $content, $item );
 				continue;
 			}
 
@@ -305,10 +305,11 @@ final class Frontend_Text_Edit {
 
 		$text      = self::sanitize_text( $request->get_param( 'text' ) );
 		$raw_path  = (string) $request->get_param( 'path' );
-		if ( self::post_title_path() === $raw_path ) {
+		if ( self::post_title_path() === $raw_path || self::post_excerpt_path() === $raw_path ) {
 			return rest_ensure_response(
-				self::update_post_title_item(
+				self::update_post_field_item(
 					$post,
+					$raw_path,
 					$text,
 					(string) $request->get_param( 'hash' )
 				)
@@ -601,18 +602,26 @@ final class Frontend_Text_Edit {
 	 */
 	private static function items_for_post( WP_Post $post ): array {
 		$items = self::items_for_content( (string) $post->post_content );
-		if ( self::content_uses_devenia_presentation_title( (string) $post->post_content ) ) {
-			array_unshift( $items, self::post_title_item( $post ) );
+		$virtual_items = array();
+
+		if ( self::content_uses_devenia_presentation_field( (string) $post->post_content, 'text.title' ) ) {
+			$virtual_items[] = self::post_title_item( $post );
+		}
+		if ( self::content_uses_devenia_presentation_field( (string) $post->post_content, 'text.excerpt' ) ) {
+			$virtual_items[] = self::post_excerpt_item( $post );
 		}
 
-		return $items;
+		return array_merge( $virtual_items, $items );
 	}
 
 	/**
-	 * Whether stored content renders its visible hero title from post_title.
+	 * Whether stored content renders a visible field from a Devenia presentation shortcode.
 	 */
-	private static function content_uses_devenia_presentation_title( string $content ): bool {
-		return 1 === preg_match( '/\[devenia_presentation\b[^\]]*\bfield=(["\'])text\.title\1[^\]]*\]/i', $content );
+	private static function content_uses_devenia_presentation_field( string $content, string $field ): bool {
+		return 1 === preg_match(
+			'/\[devenia_presentation\b[^\]]*\bfield=(["\'])' . preg_quote( $field, '/' ) . '\1[^\]]*\]/i',
+			$content
+		);
 	}
 
 	/**
@@ -620,6 +629,13 @@ final class Frontend_Text_Edit {
 	 */
 	private static function post_title_path(): string {
 		return 'post:title';
+	}
+
+	/**
+	 * Stable path for the virtual post excerpt item.
+	 */
+	private static function post_excerpt_path(): string {
+		return 'post:excerpt';
 	}
 
 	/**
@@ -637,6 +653,25 @@ final class Frontend_Text_Edit {
 			'text'      => $title,
 			'hash'      => self::hash( 'post/title', $title ),
 			'preview'   => self::brief_excerpt( $title, 140 ),
+			'html'      => '',
+		);
+	}
+
+	/**
+	 * Build a virtual editable item for a shortcode-rendered post excerpt.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private static function post_excerpt_item( WP_Post $post ): array {
+		$excerpt = self::plain_text( (string) $post->post_excerpt );
+
+		return array(
+			'path'      => self::post_excerpt_path(),
+			'blockName' => 'post/excerpt',
+			'label'     => __( 'Excerpt', 'frontend-text-edit' ),
+			'text'      => $excerpt,
+			'hash'      => self::hash( 'post/excerpt', $excerpt ),
+			'preview'   => self::brief_excerpt( $excerpt, 140 ),
 			'html'      => '',
 		);
 	}
@@ -847,26 +882,28 @@ final class Frontend_Text_Edit {
 	}
 
 	/**
-	 * Whether an editable item targets the post title rather than block content.
+	 * Whether an editable item targets a post field rather than block content.
 	 *
 	 * @param array<string,mixed> $item Editable item.
 	 */
-	private static function item_is_post_title( array $item ): bool {
-		return self::post_title_path() === (string) ( $item['path'] ?? '' );
+	private static function item_is_post_field( array $item ): bool {
+		$path = (string) ( $item['path'] ?? '' );
+		return self::post_title_path() === $path || self::post_excerpt_path() === $path;
 	}
 
 	/**
-	 * Mark the rendered H1 that is backed by post_title through a presentation shortcode.
+	 * Mark the rendered element that is backed by a post field through a presentation shortcode.
 	 *
 	 * @param array<string,mixed> $item Editable item.
 	 */
-	private static function mark_rendered_post_title( string $content, array $item ): string {
+	private static function mark_rendered_post_field( string $content, array $item ): string {
 		$text = (string) ( $item['text'] ?? '' );
 		if ( '' === $text ) {
 			return $content;
 		}
 
-		$pattern = '/<h1\b(?![^>]*\bdata-frontend-text-edit-path=)[^>]*>.*?<\/h1>/is';
+		$tag     = self::post_title_path() === (string) ( $item['path'] ?? '' ) ? 'h1' : 'p';
+		$pattern = '/<' . $tag . '\b(?![^>]*\bdata-frontend-text-edit-path=)[^>]*>.*?<\/' . $tag . '>/is';
 		if ( ! preg_match_all( $pattern, $content, $matches, PREG_OFFSET_CAPTURE ) ) {
 			return $content;
 		}
@@ -877,7 +914,7 @@ final class Frontend_Text_Edit {
 				continue;
 			}
 
-			$marked = (string) preg_replace( '/^<h1\b/i', '<h1' . self::marker_attributes( $item ), $candidate, 1 );
+			$marked = (string) preg_replace( '/^<' . $tag . '\b/i', '<' . $tag . self::marker_attributes( $item ), $candidate, 1 );
 			if ( '' !== $marked && $marked !== $candidate ) {
 				return substr_replace( $content, $marked, (int) $match[1], strlen( $candidate ) );
 			}
@@ -887,30 +924,42 @@ final class Frontend_Text_Edit {
 	}
 
 	/**
-	 * Save a frontend edit for a shortcode-rendered post title.
+	 * Save a frontend edit for a shortcode-rendered post field.
 	 *
 	 * @return array<string,mixed>
 	 */
-	private static function update_post_title_item( WP_Post $post, string $text, string $hash ): array {
-		if ( ! self::content_uses_devenia_presentation_title( (string) $post->post_content ) ) {
-			return self::error( 'This title is not backed by a supported presentation field.' );
+	private static function update_post_field_item( WP_Post $post, string $path, string $text, string $hash ): array {
+		$is_title   = self::post_title_path() === $path;
+		$is_excerpt = self::post_excerpt_path() === $path;
+		if ( ! $is_title && ! $is_excerpt ) {
+			return self::error( 'Unsupported post field.' );
 		}
 
-		$current_title = self::plain_text( (string) get_the_title( $post ) );
-		if ( $hash !== self::hash( 'post/title', $current_title ) ) {
+		$field = $is_title ? 'text.title' : 'text.excerpt';
+		if ( ! self::content_uses_devenia_presentation_field( (string) $post->post_content, $field ) ) {
+			return self::error( 'This text is not backed by a supported presentation field.' );
+		}
+
+		$current_text = self::plain_text( $is_title ? (string) get_the_title( $post ) : (string) $post->post_excerpt );
+		$hash_key     = $is_title ? 'post/title' : 'post/excerpt';
+		if ( $hash !== self::hash( $hash_key, $current_text ) ) {
 			return self::error( 'The selected text changed before save. Reload the page and try again.' );
 		}
-		if ( '' === $text || $text === $current_title ) {
+		if ( '' === $text || $text === $current_text ) {
 			return self::error( 'No text change to save.' );
 		}
 
+		$update = array(
+			'ID' => (int) $post->ID,
+		);
+		if ( $is_title ) {
+			$update['post_title'] = $text;
+		} else {
+			$update['post_excerpt'] = $text;
+		}
+
 		$result = wp_update_post(
-			wp_slash(
-				array(
-					'ID'         => (int) $post->ID,
-					'post_title' => $text,
-				)
-			),
+			wp_slash( $update ),
 			true
 		);
 		if ( is_wp_error( $result ) ) {
@@ -918,7 +967,8 @@ final class Frontend_Text_Edit {
 		}
 
 		clean_post_cache( (int) $post->ID );
-		$item = self::post_title_item( get_post( (int) $post->ID ) ?: $post );
+		$fresh_post = get_post( (int) $post->ID ) ?: $post;
+		$item       = $is_title ? self::post_title_item( $fresh_post ) : self::post_excerpt_item( $fresh_post );
 		do_action(
 			'frontend_text_edit_updated',
 			(int) $post->ID,
@@ -928,7 +978,7 @@ final class Frontend_Text_Edit {
 				'selection' => array(
 					'path'          => array(),
 					'segment_index' => null,
-					'virtual_path'  => self::post_title_path(),
+					'virtual_path'  => $path,
 				),
 			)
 		);
