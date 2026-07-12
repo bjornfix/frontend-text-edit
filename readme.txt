@@ -4,7 +4,7 @@ Tags: frontend editing, inline editing, block editor, gutenberg, content editing
 Requires at least: 6.9
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 0.1.5
+Stable tag: 0.1.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -34,16 +34,16 @@ Most frontend editing plugins focus on full post forms, frontend dashboards, mod
 * REST save endpoint with normal `edit_post` capability checks.
 * Optimistic conflict hashes so stale edits are rejected.
 * Supported core paragraph, heading, list item, and button text.
-* Devenia presentation title and excerpt editing when visible hero text is rendered from WordPress post fields.
+* Adapter-provided presentation title and excerpt editing when visible text is rendered from WordPress post fields.
 * Text-segment editing for richer block HTML.
 * GenerateBlocks headline/button matching.
 * Rank Math FAQ question and answer text editing.
-* Missing-editable-text reports sent to `support@devenia.com` for reproducible adapter improvements.
+* Missing-editable-text reports sent to the local WordPress administrator by default, with a filter for explicit routing.
 
 == Current support ==
 
 * Core paragraph, heading, list item, and button text.
-* Devenia presentation titles and excerpts rendered from WordPress post fields.
+* Presentation titles and excerpts exposed by an installed presentation Adapter.
 * Text-node segments inside richer core block HTML.
 * Linked list-item text while preserving the existing link URL.
 * GenerateBlocks headline and button text.
@@ -73,17 +73,21 @@ No. It only marks supported text surfaces where the plugin can safely map render
 
 = Can editors report text that is not editable yet? =
 
-Yes. When frontend editing mode is on, clicking visible text that is not currently editable can send a report with the page URL, text excerpt, selector hint, and site details to `support@devenia.com`.
+Yes. When frontend editing mode is on, clicking visible text that is not currently editable can send a report with the page URL, text excerpt, selector hint, and site details to the local WordPress administrator. Sites can explicitly change or disable recipients with the `frontend_text_edit_report_recipients` filter.
 
 Reports are sent only for publicly reachable HTTP/HTTPS pages. They are used to identify reproducible gaps for future plugin improvements, not as a support conversation.
 
 == Changelog ==
 
+= 0.1.6 =
+* Removes the implicit external report recipient; reports now default to the local WordPress administrator.
+* Moves provider-specific virtual post-field detection behind the `frontend_text_edit_virtual_post_field_visible` Adapter seam.
+
 = 0.1.5 =
-* Adds frontend editing for Devenia presentation hero excerpts rendered from the WordPress post excerpt.
+* Adds frontend editing for Adapter-provided hero excerpts rendered from the WordPress post excerpt.
 
 = 0.1.4 =
-* Adds frontend editing for Devenia presentation hero titles rendered from the WordPress post title.
+* Adds frontend editing for Adapter-provided hero titles rendered from the WordPress post title.
 
 = 0.1.3 =
 * Removes the logged-in user identity from missing-editable-text report emails.

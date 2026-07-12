@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Frontend Text Edit
  * Description: Frontend inline text editing for supported WordPress block content, saved back to native Gutenberg markup.
- * Version: 0.1.5
+ * Version: 0.1.6
  * Author: basicus
  * Author URI: https://profiles.wordpress.org/basicus/
  * License: GPL-2.0-or-later
@@ -508,6 +508,9 @@ final class Frontend_Text_Edit {
 	 * @return array<int,string>
 	 */
 	private static function report_recipients( int $post_id ): array {
+		$admin_email        = sanitize_email( (string) get_option( 'admin_email', '' ) );
+		$default_recipients = is_email( $admin_email ) ? array( $admin_email ) : array();
+
 		/**
 		 * Filters email recipients for missing-editable-text reports.
 		 *
@@ -516,7 +519,7 @@ final class Frontend_Text_Edit {
 		 * @param string|array<int,string> $recipients Default recipient.
 		 * @param int                      $post_id    Current post ID.
 		 */
-		$recipients = apply_filters( 'frontend_text_edit_report_recipients', array( 'support@devenia.com' ), $post_id );
+		$recipients = apply_filters( 'frontend_text_edit_report_recipients', $default_recipients, $post_id );
 		$recipients = is_array( $recipients ) ? $recipients : array( $recipients );
 
 		return array_values(
@@ -604,10 +607,10 @@ final class Frontend_Text_Edit {
 		$items = self::items_for_content( (string) $post->post_content );
 		$virtual_items = array();
 
-		if ( self::content_uses_devenia_presentation_field( (string) $post->post_content, 'text.title' ) ) {
+		if ( self::content_uses_virtual_post_field( $post, 'text.title' ) ) {
 			$virtual_items[] = self::post_title_item( $post );
 		}
-		if ( self::content_uses_devenia_presentation_field( (string) $post->post_content, 'text.excerpt' ) ) {
+		if ( self::content_uses_virtual_post_field( $post, 'text.excerpt' ) ) {
 			$virtual_items[] = self::post_excerpt_item( $post );
 		}
 
@@ -615,12 +618,21 @@ final class Frontend_Text_Edit {
 	}
 
 	/**
-	 * Whether stored content renders a visible field from a Devenia presentation shortcode.
+	 * Whether an installed presentation Adapter renders one WordPress post field.
+	 *
+	 * The generic editor does not know provider shortcodes or templates. A
+	 * presentation owner registers support through the filter below.
+	 *
+	 * @param WP_Post $post  Current post.
+	 * @param string  $field Semantic field identifier.
 	 */
-	private static function content_uses_devenia_presentation_field( string $content, string $field ): bool {
-		return 1 === preg_match(
-			'/\[devenia_presentation\b[^\]]*\bfield=(["\'])' . preg_quote( $field, '/' ) . '\1[^\]]*\]/i',
-			$content
+	private static function content_uses_virtual_post_field( WP_Post $post, string $field ): bool {
+		return (bool) apply_filters(
+			'frontend_text_edit_virtual_post_field_visible',
+			false,
+			(string) $post->post_content,
+			$field,
+			$post
 		);
 	}
 
@@ -936,7 +948,7 @@ final class Frontend_Text_Edit {
 		}
 
 		$field = $is_title ? 'text.title' : 'text.excerpt';
-		if ( ! self::content_uses_devenia_presentation_field( (string) $post->post_content, $field ) ) {
+		if ( ! self::content_uses_virtual_post_field( $post, $field ) ) {
 			return self::error( 'This text is not backed by a supported presentation field.' );
 		}
 
