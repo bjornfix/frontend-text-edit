@@ -29,17 +29,36 @@ function parse_blocks($content) { return json_decode($content, true); }
 function serialize_blocks($blocks) { return json_encode($blocks, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); }
 require $argv[1] ?? dirname(__DIR__) . '/frontend-text-edit.php';
 $failures = 0;
-foreach (array('core/paragraph' => '<p>Old</p>', 'core/heading' => '<h2>Old</h2>', 'core/button' => '<div class="wp-block-button"><a href="/next/">Old</a></div>', 'generateblocks/headline' => '<h2 class="gb-headline-ab12">Old</h2>', 'generateblocks/button' => '<a href="/next/" class="gb-button-ab12">Old</a>') as $name => $html) {
+foreach (array('core/paragraph' => '<p>Old</p>', 'core/heading' => '<h2>Old</h2>', 'core/button' => '<div class="wp-block-button"><a href="/next/">Old</a></div>', 'generateblocks/headline' => '<h2 class="gb-headline-ab12">Old</h2>', 'generateblocks/button' => '<a href="/next/" class="gb-button-ab12">Old</a>', 'generateblocks/text' => '<h2 class="gb-text dv-section-heading">Old</h2>') as $name => $html) {
     $post = new WP_Post();
     $post->post_content = serialize_blocks(array(array('blockName' => $name, 'attrs' => array(), 'innerHTML' => $html, 'innerContent' => array($html), 'innerBlocks' => array())));
     $GLOBALS['test_post'] = $post;
     $items = Frontend_Text_Edit::rest_items(new WP_REST_Request(array('post_id' => 1)))->data['items'];
+    if (empty($items)) { echo 'FAIL ' . $name . " exposes no editable item\n"; $failures++; continue; }
     $text = 'Price $19; literal $1 ${2} and $0 & path C:\docs\1';
     $result = Frontend_Text_Edit::rest_update(new WP_REST_Request(array('post_id' => 1, 'path' => $items[0]['path'], 'hash' => $items[0]['hash'], 'text' => $text)))->data;
     $expected = str_replace('Old', esc_html($text), $html);
     $saved = parse_blocks($GLOBALS['test_post']->post_content)[0];
     $ok = ($result['success'] ?? false) && $saved['innerHTML'] === $expected && $saved['innerContent'][0] === $expected && $result['item']['text'] === $text;
     echo ($ok ? 'PASS ' : 'FAIL ') . $name . " literal text, wrapper and link preserved\n";
+    $failures += !$ok;
+}
+foreach (array(
+    'current button' => '<a class="gb-text button" href="/next/">Old</a>',
+    'rich text' => '<div class="gb-text dv-rich-text">Before <a href="/next/">Old</a> after.</div>',
+) as $label => $html) {
+    $post = new WP_Post();
+    $post->post_content = serialize_blocks(array(array('blockName' => 'generateblocks/text', 'attrs' => array('uniqueId' => 'ab12', 'globalClasses' => array('dv-rich-text')), 'innerHTML' => $html, 'innerContent' => array($html), 'innerBlocks' => array())));
+    $GLOBALS['test_post'] = $post;
+    $items = Frontend_Text_Edit::rest_items(new WP_REST_Request(array('post_id' => 1)))->data['items'];
+    $selected = array_values(array_filter($items, static fn($item) => $item['text'] === 'Old'));
+    if (count($selected) !== 1) { echo 'FAIL ' . $label . " selection missing\n"; $failures++; continue; }
+    $item = $selected[0];
+    $result = Frontend_Text_Edit::rest_update(new WP_REST_Request(array('post_id' => 1, 'path' => $item['path'], 'hash' => $item['hash'], 'text' => 'New & clear')))->data;
+    $saved = parse_blocks($GLOBALS['test_post']->post_content)[0];
+    $expected = str_replace('Old', esc_html('New & clear'), $html);
+    $ok = !empty($result['success']) && $saved['innerHTML'] === $expected && $saved['innerContent'][0] === $expected && $saved['attrs']['globalClasses'] === array('dv-rich-text');
+    echo ($ok ? 'PASS ' : 'FAIL ') . $label . " text saved with link, surrounding text and style references preserved\n";
     $failures += !$ok;
 }
 exit($failures ? 1 : 0);

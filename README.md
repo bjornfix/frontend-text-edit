@@ -2,12 +2,12 @@
 
 Correct supported text on the WordPress page where you found it. Save the change back to the original Gutenberg blocks, with existing markup and link destinations preserved.
 
-[![Release](https://img.shields.io/badge/release-0.1.8-blue)](https://downloads.devenia.com/frontend-text-edit.zip)
+[![Release](https://img.shields.io/badge/release-0.1.9-blue)](https://downloads.devenia.com/frontend-text-edit.zip)
 [![License](https://img.shields.io/badge/license-GPLv2%2B-blue)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-6.9%2B-blue)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple)](https://www.php.net/)
 
-**Stable tag:** 0.1.8
+**Stable tag:** 0.1.9
 
 **Tested up to:** 7.1 (WordPress 7.1 release candidate)
 
@@ -72,7 +72,7 @@ Activate the plugin and try one short paragraph on a page you can edit. Change a
 
 - Core `core/paragraph`, `core/heading`, `core/list-item` and `core/button` blocks where a safe text replacement is possible.
 - Supported text-node segments within richer paragraphs and list items.
-- GenerateBlocks `generateblocks/headline` and `generateblocks/button` blocks through the bundled integration.
+- GenerateBlocks current `generateblocks/text` blocks, including headings, paragraphs, buttons and linked text, plus legacy `generateblocks/headline` and `generateblocks/button` blocks through the bundled integration.
 - Rank Math `rank-math/faq-block` questions and answers through the bundled integration, including synchronisation with FAQ attributes.
 - Native post titles and excerpts when an installed integration exposes their rendered text through `frontend_text_edit_virtual_post_field_visible`.
 
@@ -161,6 +161,11 @@ This leaves text editing available. No email is sent when there are no recipient
 Download the stable ZIP. In WordPress, open **Plugins → Add New Plugin → Upload Plugin**, upload the ZIP, install and activate it. Sign in, open a page you can edit, and enable **Frontend Text Edit** from the admin bar.
 
 ## Recent Changes
+
+### 0.1.9
+
+- Makes current GenerateBlocks text blocks editable, including button labels and linked text.
+- Preserves surrounding markup, link destinations and global style references when saving.
 
 ### 0.1.8
 

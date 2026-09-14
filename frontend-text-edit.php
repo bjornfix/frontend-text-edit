@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Frontend Text Edit
  * Description: Frontend inline text editing for supported WordPress block content, saved back to native Gutenberg markup.
- * Version: 0.1.8
+ * Version: 0.1.9
  * Requires at least: 6.9
  * Requires PHP: 8.0
  * Author: basicus
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Frontend_Text_Edit {
-	const VERSION = '0.1.8';
+	const VERSION = '0.1.9';
 	const REST_NAMESPACE = 'frontend-text-edit/v1';
 
 	/**

@@ -15,6 +15,7 @@ final class Frontend_Text_Edit_GenerateBlocks_Addon {
 	 */
 	public static function register(): void {
 		add_filter( 'frontend_text_edit_supported_block_names', array( __CLASS__, 'add_text_blocks' ) );
+		add_filter( 'frontend_text_edit_segment_block_names', array( __CLASS__, 'add_segment_blocks' ) );
 		add_filter( 'frontend_text_edit_button_block_names', array( __CLASS__, 'add_button_blocks' ) );
 		add_filter( 'frontend_text_edit_stable_render_class', array( __CLASS__, 'stable_render_class' ), 10, 3 );
 	}
@@ -26,7 +27,17 @@ final class Frontend_Text_Edit_GenerateBlocks_Addon {
 	 * @return array<int,string>
 	 */
 	public static function add_text_blocks( array $names ): array {
-		return self::merge_block_names( $names, array( 'generateblocks/headline', 'generateblocks/button' ) );
+		return self::merge_block_names( $names, array( 'generateblocks/headline', 'generateblocks/button', 'generateblocks/text' ) );
+	}
+
+	/**
+	 * Keep links and inline formatting when editing current GenerateBlocks text.
+	 *
+	 * @param array<int,string> $names Block names.
+	 * @return array<int,string>
+	 */
+	public static function add_segment_blocks( array $names ): array {
+		return self::merge_block_names( $names, array( 'generateblocks/text' ) );
 	}
 
 	/**
@@ -54,7 +65,7 @@ final class Frontend_Text_Edit_GenerateBlocks_Addon {
 
 		foreach ( $classes as $candidate ) {
 			$candidate = trim( (string) $candidate );
-			if ( preg_match( '/^gb-(?:headline|button)-[a-z0-9]+$/i', $candidate ) ) {
+			if ( preg_match( '/^gb-(?:headline|button|text)-[a-z0-9]+$/i', $candidate ) ) {
 				return $candidate;
 			}
 		}

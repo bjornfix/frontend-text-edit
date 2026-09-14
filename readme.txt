@@ -4,7 +4,7 @@ Tags: frontend editing, inline editing, block editor, gutenberg, content editing
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 0.1.8
+Stable tag: 0.1.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,7 +36,7 @@ Most frontend editing plugins focus on full post forms, frontend dashboards, mod
 * Supported core paragraph, heading, list item, and button text.
 * Adapter-provided presentation title and excerpt editing when visible text is rendered from WordPress post fields.
 * Text-segment editing for richer block HTML.
-* GenerateBlocks headline/button matching.
+* Current GenerateBlocks text and legacy headline/button matching.
 * Rank Math FAQ question and answer text editing.
 * Missing-editable-text reports sent to the local WordPress administrator by default, with a filter for explicit routing.
 
@@ -46,7 +46,7 @@ Most frontend editing plugins focus on full post forms, frontend dashboards, mod
 * Presentation titles and excerpts exposed by an installed presentation Adapter.
 * Text-node segments inside richer core block HTML.
 * Linked list-item text while preserving the existing link URL.
-* GenerateBlocks headline and button text.
+* Current GenerateBlocks text, headings, button labels and linked text, plus legacy headline and button blocks.
 * Rank Math FAQ question and answer text.
 
 == FAQ ==
@@ -78,6 +78,10 @@ Yes. When frontend editing mode is on, clicking visible text that is not current
 Reports are sent only for publicly reachable HTTP/HTTPS pages. They are used to identify reproducible gaps for future plugin improvements, not as a support conversation.
 
 == Changelog ==
+
+= 0.1.9 =
+* Makes current GenerateBlocks text blocks editable, including button labels and linked text.
+* Preserves surrounding markup, link destinations and global style references when saving.
 
 = 0.1.8 =
 * Preserves dollar amounts and literal replacement-like text in simple block and button edits.
