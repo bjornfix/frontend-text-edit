@@ -2,7 +2,9 @@
 /**
  * Plugin Name: Frontend Text Edit
  * Description: Frontend inline text editing for supported WordPress block content, saved back to native Gutenberg markup.
- * Version: 0.1.6
+ * Version: 0.1.7
+ * Requires at least: 6.9
+ * Requires PHP: 8.0
  * Author: basicus
  * Author URI: https://profiles.wordpress.org/basicus/
  * License: GPL-2.0-or-later
@@ -14,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Frontend_Text_Edit {
-	const VERSION = '0.1.5';
+	const VERSION = '0.1.7';
 	const REST_NAMESPACE = 'frontend-text-edit/v1';
 
 	/**
@@ -427,7 +429,6 @@ final class Frontend_Text_Edit {
 	 */
 	public static function sanitize_text( $text ): string {
 		$text = is_scalar( $text ) ? (string) $text : '';
-		$text = wp_unslash( $text );
 		$text = wp_strip_all_tags( $text );
 		$text = preg_replace( '/[ \t]+/u', ' ', $text );
 		$text = preg_replace( '/\R+/u', "\n", (string) $text );
@@ -1681,10 +1682,24 @@ final class Frontend_Text_Edit {
 	private static function replace_block_text( string $block_name, string $html, string $text ): string {
 		$escaped = esc_html( $text );
 		if ( in_array( $block_name, self::button_block_names(), true ) ) {
-			return (string) preg_replace( '/(<a\b[^>]*>)[^<]*(<\/a>)/is', '$1' . $escaped . '$2', $html, 1 );
+			return (string) preg_replace_callback(
+				'/(<a\b[^>]*>)[^<]*(<\/a>)/is',
+				static function ( array $match ) use ( $escaped ): string {
+					return $match[1] . $escaped . $match[2];
+				},
+				$html,
+				1
+			);
 		}
 
-		return (string) preg_replace( '/^(<([a-z][a-z0-9]*)\b[^>]*>)[^<]*(<\/\2>)$/is', '$1' . $escaped . '$3', trim( $html ), 1 );
+		return (string) preg_replace_callback(
+			'/^(<([a-z][a-z0-9]*)\b[^>]*>)[^<]*(<\/\2>)$/is',
+			static function ( array $match ) use ( $escaped ): string {
+				return $match[1] . $escaped . $match[3];
+			},
+			trim( $html ),
+			1
+		);
 	}
 
 	/**
