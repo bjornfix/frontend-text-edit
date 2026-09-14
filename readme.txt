@@ -2,9 +2,9 @@
 Contributors: basicus
 Tags: frontend editing, inline editing, block editor, gutenberg, content editing
 Requires at least: 6.9
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 0.1.7
+Stable tag: 0.1.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -79,7 +79,7 @@ Reports are sent only for publicly reachable HTTP/HTTPS pages. They are used to 
 
 == Changelog ==
 
-= 0.1.7 =
+= 0.1.8 =
 * Preserves dollar amounts and literal replacement-like text in simple block and button edits.
 * Preserves backslashes in text received through the REST editing protocol.
 

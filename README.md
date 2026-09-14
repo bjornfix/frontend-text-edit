@@ -2,14 +2,14 @@
 
 Correct supported text on the WordPress page where you found it. Save the change back to the original Gutenberg blocks, with existing markup and link destinations preserved.
 
-[![Release](https://img.shields.io/badge/release-0.1.7-blue)](https://downloads.devenia.com/frontend-text-edit.zip)
+[![Release](https://img.shields.io/badge/release-0.1.8-blue)](https://downloads.devenia.com/frontend-text-edit.zip)
 [![License](https://img.shields.io/badge/license-GPLv2%2B-blue)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-6.9%2B-blue)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple)](https://www.php.net/)
 
-**Stable tag:** 0.1.7
+**Stable tag:** 0.1.8
 
-**Tested up to:** 7.0
+**Tested up to:** 7.1 (WordPress 7.1 release candidate)
 
 **License:** GPLv2 or later
 
@@ -162,7 +162,7 @@ Download the stable ZIP. In WordPress, open **Plugins → Add New Plugin → Upl
 
 ## Recent Changes
 
-### 0.1.7
+### 0.1.8
 
 - Preserves literal dollar amounts and replacement-like text such as `$1` during simple block and button edits.
 - Preserves backslashes in text received through the REST editor protocol.
