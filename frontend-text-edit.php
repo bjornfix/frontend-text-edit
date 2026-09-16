@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Frontend Text Edit
  * Description: Frontend inline text editing for supported WordPress block content, saved back to native Gutenberg markup.
- * Version: 0.1.9
+ * Version: 0.1.10
  * Requires at least: 6.9
  * Requires PHP: 8.0
  * Author: basicus
@@ -15,8 +15,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/includes/devenia-updater-notice.php';
+frontend_text_edit_Updater_Notice::register( __FILE__ );
+
 final class Frontend_Text_Edit {
-	const VERSION = '0.1.9';
+	const VERSION = '0.1.10';
 	const REST_NAMESPACE = 'frontend-text-edit/v1';
 
 	/**

@@ -2,12 +2,12 @@
 
 Correct supported text on the WordPress page where you found it. Save the change back to the original Gutenberg blocks, with existing markup and link destinations preserved.
 
-[![Release](https://img.shields.io/badge/release-0.1.9-blue)](https://downloads.devenia.com/frontend-text-edit.zip)
+[![Release](https://img.shields.io/badge/release-0.1.10-blue)](https://downloads.devenia.com/frontend-text-edit.zip)
 [![License](https://img.shields.io/badge/license-GPLv2%2B-blue)](https://www.gnu.org/licenses/gpl-2.0.html)
 [![WordPress](https://img.shields.io/badge/WordPress-6.9%2B-blue)](https://wordpress.org/)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-purple)](https://www.php.net/)
 
-**Stable tag:** 0.1.9
+**Stable tag:** 0.1.10
 
 **Tested up to:** 7.1 (WordPress 7.1 release candidate)
 
@@ -162,6 +162,11 @@ Download the stable ZIP. In WordPress, open **Plugins → Add New Plugin → Upl
 
 ## Recent Changes
 
+
+### 0.1.10
+
+Add one dismissible Plugins-screen reminder when Devenia MCP Updater is missing or inactive, with persistent install or activate links. Automatic updates remain your choice in WordPress.
+
 ### 0.1.9
 
 - Makes current GenerateBlocks text blocks editable, including button labels and linked text.
@@ -198,3 +203,8 @@ GPLv2 or later. See the [GPL licence](https://www.gnu.org/licenses/gpl-2.0.html)
 - [Frontend Text Edit](https://devenia.com/plugins/frontend-text-edit/)
 - [Download](https://downloads.devenia.com/frontend-text-edit.zip)
 - [Other plugins](https://devenia.com/plugins/)
+
+
+## Update notifications
+
+For update notifications in WordPress, install [Devenia MCP Updater](https://downloads.devenia.com/devenia-mcp-updater.zip). The updater is optional. You choose which plugins update automatically through WordPress.

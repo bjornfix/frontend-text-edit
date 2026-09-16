@@ -4,7 +4,7 @@ Tags: frontend editing, inline editing, block editor, gutenberg, content editing
 Requires at least: 6.9
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 0.1.9
+Stable tag: 0.1.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,9 @@ Yes. When frontend editing mode is on, clicking visible text that is not current
 Reports are sent only for publicly reachable HTTP/HTTPS pages. They are used to identify reproducible gaps for future plugin improvements, not as a support conversation.
 
 == Changelog ==
+
+= 0.1.10 =
+* Add one dismissible Plugins-screen reminder when Devenia MCP Updater is missing or inactive, with persistent install or activate links. Automatic updates remain your choice in WordPress.
 
 = 0.1.9 =
 * Makes current GenerateBlocks text blocks editable, including button labels and linked text.
