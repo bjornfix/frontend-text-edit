@@ -15,8 +15,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-require_once __DIR__ . '/includes/devenia-updater-notice.php';
-frontend_text_edit_Updater_Notice::register( __FILE__ );
+add_action( 'admin_init', static function () {
+	require_once __DIR__ . '/includes/devenia-updater-notice.php';
+	frontend_text_edit_Updater_Notice::register( __FILE__ );
+} );
 
 final class Frontend_Text_Edit {
 	const VERSION = '0.1.10';
